@@ -6,7 +6,6 @@ Cervical abnormality screening is pivotal for prevention and treatment. However,
 
 - [Requirements](#requirements)
 - [Quick usage](#quick-usage)
-- [Programmatic download from Hugging Face](#programmatic-download-from-hugging-face)
 - [Slide-level diagnosis](#slide-level-diagnosis)
 - [Citation &amp; License](#citation--license)
 

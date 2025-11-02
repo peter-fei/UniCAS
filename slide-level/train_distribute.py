@@ -139,6 +139,8 @@ def main(args):
 
 
     if args.eval_only:
+        epoch = 0
+        
         val_loss, val_accs, val_error_list, val_senss, val_specs,val_aucs,val_f1s = evaluate(model=model,
                             data_loader=val_loader,
                             local_rank=args.local_rank,
@@ -147,7 +149,7 @@ def main(args):
                             name='val',
                             cont=True,
                         )
-        epoch = 0
+        
         test_loss, test_accs, test_error_list, test_senss, test_specs,test_aucs,test_f1s = evaluate_all(model=model,
                         data_loader=test_loader,
                         local_rank=args.local_rank,

@@ -1,8 +1,6 @@
-## Multi-task Aggregator — slide-level diagnosis
+## Multi-task Aggregator for slide-level diagnosis
 
 A lightweight README for training and evaluating the multi-task aggregator on whole-slide level tasks.
-
-简体中文：本项目实现了用于病理切片（slide-level）多任务诊断的聚合器（Multi-task Aggregator）。下面给出数据组织、配置和使用示例。
 
 ## Dataset / CSV format
 
