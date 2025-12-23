@@ -38,6 +38,12 @@ The default config is `configs/multitask_unicas.yaml`. Important keys:
 
 Edit the YAML to match your dataset and training preferences.
 
+## Encode
+
+```
+python encode.py --encoder UniCAS --csv csvs/test.csv
+```
+
 ## Train
 
 Use PyTorch's `torchrun` to launch training. Example single-node single-process run:

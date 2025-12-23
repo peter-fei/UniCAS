@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from models.nystrom_attention import NystromAttention
-# from models.clip_adapter import ClipAdapter_Slide 
 
 class TransLayer(nn.Module):
 
@@ -55,7 +54,6 @@ class TransMIL(nn.Module):
         self.norm = nn.LayerNorm(512)
         self._fc2 = nn.Linear(512, self.n_classes)
         self.num_tasks = num_tasks
-        # self.heads = nn.ModuleList([nn.Linear(512, self.n_classes) for i in range(num_tasks)])
         self.clip_head = clip_head
         if self.clip_head:
             self.text_projs = [ nn.Sequential(
@@ -67,26 +65,17 @@ class TransMIL(nn.Module):
     
             self.heads = nn.ModuleList([nn.Linear(512, 512) for i in range(num_tasks)])
         print(f'clip_head: {clip_head} -------------------------------')
-        # print('clip_select:',clip_select)
-        
-        self.clip_select =  ClipAdapter_Slide(embed_dim,512) if clip_select else nn.Identity()
+        self.clip_select = nn.Identity()
         self.select = clip_select
-        # try:
-        #     self.clip_select = clip_select
-        # except:
-        #     self.clip_select = False
         
 
     def forward(self,x,text_features=None,labels=None):
-        # print(x.size(),'adas')
         if self.select:
             x,loss = self.clip_select(x,labels)
-                   
             print(x.size(),loss,'oopsads')
 
-        h = x.float() #[B, n, 1024]
-        # print('www',h.size())
-        h = self._fc1(h) #[B, n, 512]
+        h = x.float()
+        h = self._fc1(h)
         
         #---->pad
         H = h.shape[1]
@@ -99,29 +88,21 @@ class TransMIL(nn.Module):
         cls_tokens = self.cls_token.expand(B, -1, -1).cuda()
         h = torch.cat((cls_tokens, h), dim=1)
 
-        #---->Translayer x1
-        h = self.layer1(h) #[B, N, 512]
+        h = self.layer1(h)
 
-        #---->PPEG
-        h = self.pos_layer(h, _H, _W) #[B, N, 512]
+        h = self.pos_layer(h, _H, _W)
         
-        #---->Translayer x2
-        h = self.layer2(h) #[B, N, 512]
+        h = self.layer2(h)
 
-        #---->cls_token
         h = self.norm(h)
 
         results_dict = {}
-        #---->predict
-        logits = self._fc2(h[:,0]) #[B, n_classes]
-        # return logits
+        logits = self._fc2(h[:,0])
         results_dict[0] = logits
         return results_dict
 
         for i in range(self.num_tasks):
-            logits = self.heads[i](h[:,i]) #[B, n_classes]
-            # Y_hat = torch.argmax(logits, dim=1)
-            # Y_prob = F.softmax(logits, dim = 1)
+            logits = self.heads[i](h[:,i])
             results_dict[i] = logits
             results_dict[f'feature_{i}'] = h[:,i]
             if text_features is not None:

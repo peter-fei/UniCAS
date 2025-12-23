@@ -1,26 +1,21 @@
 import warnings
 import os
 import math
+import logging
 from utils.functions import get_optimizer
-
 import torch
-import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
-from torchvision import transforms
 from torch.utils.data import DistributedSampler
 from args import get_args
 from my_dataset import MultiDataSet
-# from models.vit_res_model import *
 from models.slide_multitask import Slide_Multitask
 from utils.utils import  train_one_epoch, evaluate, evaluate_all
-
 import pandas as pd
 import random
 import numpy as np
 import warnings
-
 
 warnings.filterwarnings('ignore')
 
@@ -52,13 +47,28 @@ def main(args):
     print('-'*100)
     seed_reproducer(9)
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    
+    if args.cont and args.local_rank == 0:
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(logging.WARNING)
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(message)s',
+            handlers=[
+                logging.FileHandler(args.logdir if hasattr(args, 'logdir') else 'training.log', mode='w'),
+                stream_handler
+            ]
+        )
+        logger = logging.getLogger(__name__)
+    else:
+        logger = None
 
     train_dataset = MultiDataSet(data=pd.read_csv(args.train_csv),
-                              img_batch=args.img_batch,
-                              tasks=args.tasks,
-                              task_id=args.task_id,
-                              encoder = args.encoder,
-                                 )
+                                img_batch=args.img_batch,
+                                tasks=args.tasks,
+                                task_id=args.task_id,
+                                encoder = args.encoder,
+                                )
 
     val_dataset = MultiDataSet(data=pd.read_csv(args.valid_csv),
                                 img_batch=args.img_batch,
@@ -76,8 +86,7 @@ def main(args):
 
     print('len_dataset: ',len(train_dataset),len(val_dataset),len(test_dataset))
     batch_size = args.batch_size
-    nw = min([os.cpu_count(), batch_size if batch_size > 1 else 0, 8])  # number of workers
-
+    nw = min([os.cpu_count(), batch_size if batch_size > 1 else 0, 8])
     print('Using {} dataloader workers every process'.format(nw))
     train_sampler = DistributedSampler(train_dataset)
     train_loader = torch.utils.data.DataLoader(train_dataset,
@@ -108,10 +117,7 @@ def main(args):
     if args.weights != "":
         print(f'loading ckpt from {args.weights} --------------------',model.load_state_dict(torch.load(args.weights), strict=False))
 
-   
     optimizer = get_optimizer(args,model)
-
-
     # Scheduler https://arxiv.org/pdf/1812.01187.pdf
     lf = lambda x: ((1 + math.cos(x * math.pi / args.epochs)) / 2) * (1 - args.lrf) + args.lrf  
     scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lf)
@@ -121,9 +127,6 @@ def main(args):
 
     model = nn.parallel.DistributedDataParallel(model.cuda(args.local_rank),device_ids=[args.local_rank], find_unused_parameters=True,broadcast_buffers=False)
 
-    if args.cont:
-        with open(args.logdir,'w') as f:
-            f.write('')
     train_error_dict = {}
     val_error_dict = {}
     test_error_dict = {}
@@ -131,30 +134,15 @@ def main(args):
     test_error_list = []
     if not args.eval_only:
         tb_writer = SummaryWriter(args.where)
-        print(args.where,tb_writer,'pooo',args.cont, args.local_rank)
     train_loss = None
-    
-
-    num_per_cls_list = train_dataset.num_per_cls_list
-
 
     if args.eval_only:
         epoch = 0
-        
-        val_loss, val_accs, val_error_list, val_senss, val_specs,val_aucs,val_f1s = evaluate(model=model,
-                            data_loader=val_loader,
-                            local_rank=args.local_rank,
-                            epoch=epoch,
-                            num_tasks=args.num_tasks,
-                            name='val',
-                            cont=True,
-                        )
-        
-        test_loss, test_accs, test_error_list, test_senss, test_specs,test_aucs,test_f1s = evaluate_all(model=model,
+        test_loss, test_accs, test_senss, test_specs,test_aucs,test_f1s, test_error_list = evaluate_all(model=model,
                         data_loader=test_loader,
                         local_rank=args.local_rank,
                         epoch=epoch,
-                        num_tasks=args.num_tasks,
+                        args=args,
                         name='test',
                         cont=True,
                     )
@@ -169,50 +157,51 @@ def main(args):
                                     data_loader=train_loader,
                                     local_rank=args.local_rank,
                                     epoch=epoch,
-                                    num_tasks=args.num_tasks,
+                                    args=args,
                                     istrain = istrain_list,
                                     cont=args.cont,
                                     )
-    # #   
             scheduler.step()
             if args.local_rank ==0:
+                print(args.local_rank,'train_acc', train_accs)
+                print(args.local_rank,'train_sen', train_senss)
+                print(args.local_rank,'train_spec', train_specs)
+                print(args.local_rank,'train_auc', train_aucs)
+
+
                 torch.save(model.module.state_dict(), args.where+"/model-{}.pth".format(epoch))  
                 
         if epoch % 1 == 0:
 
-            val_loss, val_accs, val_error_list, val_senss, val_specs,val_aucs,val_f1s = evaluate(model=model,
+            val_loss, val_accs, val_senss, val_specs, val_aucs, val_f1s, val_error_list = evaluate(model=model,
                             data_loader=val_loader,
                             local_rank=args.local_rank,
                             epoch=epoch,
-                            num_tasks=args.num_tasks,
+                            args=args,
                             name='val',
                             cont=True,
                         )
-        
-            if args.cont and args.local_rank == 0:
-                index = args.tasks.index('label') if 'label' in args.tasks else -1
-                print(index,args.local_rank,'label')
+
+            if args.cont and args.local_rank == 0 and logger:
+                index = args.tasks.index('cancer')
                 train_error_list_label = train_error_list[index]
                 val_error_list = val_error_list[index]
-                # test_error_list = test_error_list[index]
-                with open(args.logdir,'a') as f:
-                    if len(train_error_list_label) > 0:
-                        for i in train_error_list_label:
-                            train_error_dict[i] = train_error_dict.get(i,0)+1
-                        train_cont_lines = [str(k).strip() + ': ' + str(v) + '\n' for k,v in train_error_dict.items()]
-                        f.write('**'*20 + f'train epoch {epoch}' + '**'*20 +'\n')
-                        f.writelines(train_cont_lines)
-                        
-                    if len(val_error_list) > 0:
-                        for i in val_error_list:
-                            val_error_dict[i] = val_error_dict.get(i,0)+1
-                        val_cont_lines = [str(k).strip() + ': ' + str(v) + '\n' for k,v in val_error_dict.items()]    
-                        f.write(f'------------------------------eval epoch {epoch}-----------------------------------\n')
-                        f.writelines(val_cont_lines)
+                if len(train_error_list_label) > 0:
+                    logger.info('='*40 + f' Train Epoch {epoch} ' + '='*40)
+                    for i in train_error_list_label:
+                        train_error_dict[i] = train_error_dict.get(i,0)+1
+                    for k, v in train_error_dict.items():
+                        logger.info(f'{k.strip()}: {v}')
+                    
+                if len(val_error_list) > 0:
+                    logger.info('-'*40 + f' Validation Epoch {epoch} ' + '-'*40)
+                    for i in val_error_list:
+                        val_error_dict[i] = val_error_dict.get(i,0)+1
+                    for k, v in val_error_dict.items():
+                        logger.info(f'{k.strip()}: {v}')
 
-            
-                tb_writer.add_scalar(f'train_error_highpos',len(train_error_list),epoch)
-                tb_writer.add_scalar(f'val_error_highpos',len(val_error_list),epoch)
+                tb_writer.add_scalar(f'train_error_ASCUS+',len(train_error_list),epoch)
+                tb_writer.add_scalar(f'val_error_ASCUS+',len(val_error_list),epoch)
             
 
                 for i in range(args.num_tasks):

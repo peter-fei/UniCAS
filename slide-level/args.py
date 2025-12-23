@@ -23,6 +23,7 @@ parser.add_argument('--base_path', default='/public_bme/data/jianght/datas/Patho
 parser.add_argument('--train-csv', default='train.csv')
 parser.add_argument('--valid-csv', '--test_neibu_csv', default='valid.csv')
 parser.add_argument('--test-csv','--test_waibu_csv', default='test.csv')
+parser.add_argument('--logdir', default='training.csv', help='where to save the false predictions for ASC-US+')
 
 
 

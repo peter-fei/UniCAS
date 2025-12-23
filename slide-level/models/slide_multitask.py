@@ -1,10 +1,16 @@
 import torch
 import torch.nn as nn
 from models.multitask_agg import MultiTask_Agg
+from torchvision import models as torchvision_models
+from args import get_args
+import os
+from models.multitask_agg import MultiTask_Agg
 from torch.nn import functional as F
+from einops import rearrange
+import warnings
 import json
 from torchvision.transforms.functional import center_crop
-
+from einops import repeat
 
 import numpy as np
 import time
@@ -12,7 +18,7 @@ import time
 
 
 class Slide_Multitask(nn.Module):
-    def __init__(self,args=None,config=None):
+    def __init__(self,args=None):
         super().__init__()
         self.img_size = 224
         aggregator = getattr(args,'aggregator','multi_task')

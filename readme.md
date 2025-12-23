@@ -1,6 +1,6 @@
 # UniCAS
 
-Cervical abnormality screening is pivotal for prevention and treatment. However, the substantial size of whole slide images (WSIs) makes examination labor-intensive and time-consuming. Current deep learning-based approaches struggle with the morphological diversity of cervical cytology and require specialized models for distinct diagnostic tasks, leading to fragmented workflows. Here, we present UniCAS, a cervical cytology foundation model pre-trained via self-supervised learning on 48,532 WSIs encompassing diverse patient demographics and pathological conditions. UniCAS enables various clinical analysis tasks, achieving state-of-the-art performance in slide-level diagnosis, region-level analysis, and pixel-level image enhancement. In particular, by integrating a multi-task aggregator for slide-level diagnosis, UniCAS achieves AUCs of 92.60%, 92.58%, and 98.39% for cancer screening, candidiasis testing, and clue cell diagnosis, respectively, while reducing diagnostic time by 70% compared to conventional approaches. This work establishes a paradigm for efficient multi-scale analysis in automated cervical cytology, bridging the gap between computational pathology and clinical diagnostic workflows.
+Cervical abnormality screening is pivotal for prevention and treatment. However, the substantial size of whole slide images (WSIs) makes examination labor-intensive and time-consuming. Current deep learning-based approaches struggle with the morphological diversity of cervical cytology and require specialized models for distinct diagnostic tasks, leading to fragmented workflows. Here, we present UniCAS, a cytology foundation model pre-trained on 48,532 cervical WSIs encompassing diverse patient demographics and pathological conditions. UniCAS enables various clinical analysis tasks, achieving state-of-the-art performance in slide-level diagnosis, region-level analysis, and pixel-level image enhancement. In particular, by integrating a multi-task aggregator for slide-level diagnosis, UniCAS achieves AUCs of 92.60%, 92.58%, and 98.39% for cancer screening, candidiasis testing, and clue cell diagnosis, respectively, while reducing diagnostic time by 70% compared to conventional approaches. This work establishes a paradigm for efficient multi-scale analysis in automated cervical cytology, bridging the gap between computational pathology and clinical diagnostic workflows.
 
 ## Table of Contents
 
@@ -25,7 +25,7 @@ Use a CUDA-enabled PyTorch build if you want GPU acceleration.
 
 ## Quick usage
 
-Example: create the ViT model with the UniCAS hyper-parameters and load pretrained weights you downloaded from [Hugging Face](https://huggingface.co/jianght/UniCAS).
+Example: create the ViT model with the UniCAS hyper-parameters and load pretrained weights you downloaded from [Baidu Netdisk](https://pan.baidu.com/s/154QIsDYiBjDaxhyvlc2YYQ?pwd=9z95) or [Hugging Face](https://huggingface.co/jianght/UniCAS).
 
 ```python
 import functools
@@ -53,7 +53,7 @@ model = timm.models.VisionTransformer(**params)
 # download the checkpoint from Hugging Face, place it locally as 'UniCAS.pth'
 # then load the state dict (strict=False to allow slight architecture differences)
 state = torch.load('UniCAS.pth', map_location='cpu')
-model.load_state_dict(state, strict=False)
+print(model.load_state_dict(state, strict=False))
 
 # example forward pass
 model.eval()

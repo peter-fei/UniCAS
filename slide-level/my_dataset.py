@@ -1,105 +1,74 @@
-import pandas as pd
-from PIL import Image
-import torch
-from torch.utils.data import Dataset
-import cv2
 import os
-import numpy as np
-
-IMAGE_FOLDER_ROOT = "./"
-import os  
-from PIL import Image  
-import torch  
-import torchvision.transforms as transforms  
-from torch.utils.data import Dataset  
 from glob import glob
+import pandas as pd
+import torch
+import torchvision.transforms as transforms
 from einops.layers.torch import Rearrange
-import json
-import random
-import re
+from PIL import Image
+from torch.utils.data import Dataset
+
+FEATURE_FOLDER_ROOT = "./a"
+# SLIDE_FOLDER_ROOT = "./Slide_Path"
+SLIDE_FOLDER_ROOT = "E:/"
 
 
 class MultiDataSet(Dataset):
-    def __init__(self, data,img_batch=800,tasks=['cancer', 'candidiasis','cluecell'],encoder='unicas',task_id=None):
-        if isinstance(data,str) and  os.path.isfile(data):
+    def __init__(self, data, img_batch=800, tasks=None, encoder="unicas", task_id=None):
+        if isinstance(data, str) and os.path.isfile(data):
             data = pd.read_csv(data)
-
-        print(len(data))
-
-        if task_id:
-            self.data = data[data['task_id'].isin(task_id)]
+        if tasks is None:
+            tasks = ["cancer", "candidiasis", "cluecell"]
+        self.tasks = list(tasks) if not isinstance(tasks, str) else [tasks]
+        if task_id is not None:
+            self.data = data[data["task_id"].isin(task_id)]
         else:
             self.data = data 
         self.data = self.data.drop_duplicates()
-        print('len data',len(self.data))
-
-
-        n = len(self.data)
-
         self.img_batch = img_batch
-        self.tasks = tasks
-        self.encoder = encoder #if encoder in ('uni','gigapath','conch','1levit','resnet','dino','hibou','dino2','hoptimus','dino_100','dino_100_2','dino_new','dino_1275','pathasst','dino_1275_stainNA') else '256_pt'
-
-        self.file_folder = f'{IMAGE_FOLDER_ROOT}/Pathology_{encoder}_patch'
-
-        # print(len(self.data['fungus']==0))
-        self.num_per_cls_list = [ [len(self.data[self.data[task]==0]),len(self.data[self.data[task]==1])] for task in tasks]
-        print(self.encoder,tasks,self.num_per_cls_list)
-        # exit()
-        
+        self.encoder = encoder
+        feature_folders = glob(f"{FEATURE_FOLDER_ROOT}/Pathology_{encoder}_p*")
+        if not feature_folders:
+            raise ValueError(f"No feature folder found: {FEATURE_FOLDER_ROOT}/Pathology_{encoder}_p*")
+        self.file_folder = feature_folders[0]
         self.columns = self.data.columns.to_list()
-        print(self.columns)
-
-        if isinstance(self.tasks,str):
-            self.tasks = [tasks]
-        # print(self.data.columns.array)
-        for i in self.tasks:
-            assert i in self.columns, f'task names wrong : get {i} -------- '
-
-
-        # print(self.data.columns)
+        for task in self.tasks:
+            assert task in self.columns, f"task names wrong : get {task} -------- "
+        self.num_per_cls_list = [
+            [len(self.data[self.data[task] == 0]), len(self.data[self.data[task] == 1])]
+            for task in self.tasks
+        ]
+        print(self.encoder, self.tasks, self.num_per_cls_list)
         print(f'total_data:{len(self.data)}----------------------------------------------')
-        self.columns = self.data.columns.to_list()
-
-        
-
-        
 
     def __getitem__(self, index):
-
-        #cancer 0	candidiasis 1	cluecell 2
-
-        images_tensor = self.get_imgtensor(index)
-        label_dict={}
+        patch_tensors = self.get_imgtensor(index)
+        label_dict = {}
         
-
         for i in self.tasks:
             column_index = self.data.columns.get_loc(i)
-            idx = self.columns.index(i)
-            label = self.data.iloc[index,column_index]
-            label_dict[f'{i}_label'] = label
+            label = self.data.iloc[index, column_index]
+            label_dict[f"{i}_label"] = label
             
-
-        label_dict['name'] = self.data.iloc[index, 0]
-        if 'code' in self.data.columns:
-            idx = self.data.columns.get_loc('code')
-            label_dict['code'] = self.data.iloc[index,idx]
+        label_dict["name"] = self.data.iloc[index, 0]
+        if "code" in self.data.columns:
+            idx = self.data.columns.get_loc("code")
+            label_dict["code"] = self.data.iloc[index, idx]
         else:
-            label_dict['code'] = self.data.iloc[index, 0].split('/')[-1]
-        if 'cancer_grade' in self.data.columns:
-            grade_index = self.data.columns.get_loc('cancer_grade')
+            label_dict["code"] = str(self.data.iloc[index, 0]).split("/")[-1]
+        if "cancer_grade" in self.data.columns:
+            grade_index = self.data.columns.get_loc("cancer_grade")
         else:
-            grade_index = self.data.columns.get_loc('cancer')
-        label_dict['cancer_grade'] = self.data.iloc[index, grade_index]
-        if 'task_id' in self.data.columns:
-            idx = self.data.columns.get_loc('task_id')
-            label_dict['task_id'] = self.data.iloc[index,idx]
+            grade_index = self.data.columns.get_loc("cancer")
+        label_dict["cancer_grade"] = self.data.iloc[index, grade_index]
+        if "task_id" in self.data.columns:
+            idx = self.data.columns.get_loc("task_id")
+            label_dict["task_id"] = self.data.iloc[index, idx]
         else:
-            label_dict['task_id'] = -1
-        label_dict['num_list'] = self.num_per_cls_list
+            label_dict["task_id"] = -1
+        label_dict["num_list"] = self.num_per_cls_list
         labels = label_dict
 
-        return images_tensor, labels
+        return patch_tensors, labels
 
     def __len__(self):
         return len(self.data)
@@ -107,56 +76,109 @@ class MultiDataSet(Dataset):
     @staticmethod
     def collate_fn(batch):
         images, labels = tuple(zip(*batch))
-
         images = torch.stack(images, dim=0)
-        labels = torch.as_tensor(labels)
-        return images, labels
+        return images, list(labels)
 
-    def get_imgtensor(self,index):
-        folder_path = None
-        
+    def get_imgtensor(self, index):
         base_folder = self.file_folder
-        # print(base_folder)
-        folder_path = get_folder_path(self.data.iloc[index, 0],base_folder)
-
-      
+        folder_path = get_folder_path(self.data.iloc[index, 0], base_folder)
         if folder_path is None:
-            print(self.data.iloc[index, 0],self.file_folder)
-            raise f'Can not Find {self.data.iloc[index, 0]} ----------------------------------'
-        if folder_path and os.path.isfile(os.path.join(folder_path,'images.pt')):
-            # print(folder_path)
-            if os.path.getsize(os.path.join(folder_path,'images.pt')) == 0:
-                print(folder_path)
+            raise ValueError(f"Can not find {self.data.iloc[index, 0]}")
 
-            images_tensor = torch.load(os.path.join(folder_path,'images.pt'),weights_only=True)
+        tensor_path = os.path.join(folder_path, "images.pt")
+        if not os.path.isfile(tensor_path):
+            raise ValueError(f"Tensor of {self.data.iloc[index, 0]} not exist")
+        if os.path.getsize(tensor_path) == 0:
+            print(folder_path)
 
-           
-            images_tensor = images_tensor[:self.img_batch]
-           
-            return images_tensor
-        else:
-           raise f' Tensot of {self.data.iloc[index, 0]} not Exist----------------------------------'
+        patch_tensors = torch.load(tensor_path, map_location="cpu")
+        patch_tensors = patch_tensors[: self.img_batch]
+        return patch_tensors
 
+
+class EncoderData(Dataset):
+    def __init__(self, data, img_batch=50, encoder="unicas"):
+        if isinstance(data, str) and os.path.isfile(data):
+            data = pd.read_csv(data)
+        self.data = data.drop_duplicates()
+        self.data = self.data.iloc[::-1]
+        self.img_batch = img_batch
+        self.encoder = encoder
+        self.columns = self.data.columns.to_list()
+        self.transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            Rearrange('c (h p1) (w p2) -> (h w) c p1 p2 ', p1=256, p2=256),
+            ])
+
+        print(self.encoder)
+        print(f'total_data:{len(self.data)}----------------------------------------------')
+
+    def __getitem__(self, index):
+
+        folder_path = get_folder_path(self.data.iloc[index, 0], SLIDE_FOLDER_ROOT)
+        if folder_path is None:
+            raise ValueError(f"Can not find {self.data.iloc[index, 0]}")
+
+        save_path = folder_path.replace(
+            SLIDE_FOLDER_ROOT,
+            f"{FEATURE_FOLDER_ROOT}/Pathology_{self.encoder}_patch/",
+        )
+        if self.transform is not None and os.path.exists(f"{save_path}/images.pt"):
+            return torch.zeros(800, 3, 256, 256), save_path
+
+
+        image_filenames = sorted(
+            glob(f"{folder_path}/*.jpg"),
+            key=lambda x: os.path.getsize(x),
+            reverse=True,
+        )
+        images = []
+        cnt = 0
+
+        for img_name in image_filenames:
+            image_path = img_name
+            try:
+                with Image.open(image_path) as image:
+                    image = self.transform(image)
+                images.extend(image)
+                cnt += 1
+            except Exception:
+                print(f"{image_path} can not read ----------------")
+            if cnt >= self.img_batch:
+                break
         
-def get_folder_path(name, floder):
+        patch_tensors = torch.stack(images)        
+        return patch_tensors, save_path
+
+    def __len__(self):
+        return len(self.data)
+
+    @staticmethod
+    def collate_fn(batch):
+        images, labels = tuple(zip(*batch))
+        images = torch.stack(images, dim=0)
+        return images, list(labels)
+
+
+def get_folder_path(name, folder):
 
     folder_path = None
-    if os.path.isdir(os.path.join(floder, name, 'torch')):
-        folder_path = os.path.join(floder, name, 'torch')
-    elif os.path.isdir(os.path.join(floder,'yangxing','Torch',name,'torch')):
-        folder_path = os.path.join(floder,'yangxing','Torch',name,'torch')
-    elif os.path.isdir(os.path.join(floder,'yinxing','Torch',name,'torch')):
-        folder_path = os.path.join(floder,'yinxing','Torch',name,'torch')
-    elif os.path.isdir(os.path.join(floder, name)):
-        folder_path = os.path.join(floder, name)
-    elif os.path.isdir(os.path.join(floder,'Torch',name,'torch')):
-        folder_path = os.path.join(floder,'Torch',name,'torch')
-    elif os.path.isdir(os.path.join(floder,'Data2025',name,'torch')):
-        folder_path = os.path.join(floder,'Data2025',name,'torch')
+    if os.path.isdir(os.path.join(folder, name, "torch")):
+        folder_path = os.path.join(folder, name, "torch")
+    elif os.path.isdir(os.path.join(folder, "yangxing", "Torch", name, "torch")):
+        folder_path = os.path.join(folder, "yangxing", "Torch", name, "torch")
+    elif os.path.isdir(os.path.join(folder, "yinxing", "Torch", name, "torch")):
+        folder_path = os.path.join(folder, "yinxing", "Torch", name, "torch")
+    elif os.path.isdir(os.path.join(folder, name)):
+        folder_path = os.path.join(folder, name)
+    elif os.path.isdir(os.path.join(folder, "Torch", name, "torch")):
+        folder_path = os.path.join(folder, "Torch", name, "torch")
+    elif os.path.isdir(os.path.join(folder, "Data2025", name, "torch")):
+        folder_path = os.path.join(folder, "Data2025", name, "torch")
 
     if folder_path is None:
-        print(f'{name} not in {floder}')
-        folder_path = None
+        print(f"{name} not in {folder}")
     return folder_path
 
 

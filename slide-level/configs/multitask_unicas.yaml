@@ -1,7 +1,7 @@
 base_path: ./csvs
-train_csv: 'test2.csv'
-valid_csv: 'test2.csv'
-test_csv: 'test2.csv'
+train_csv: 'test.csv'
+valid_csv: 'test.csv'
+test_csv: 'test.csv'
 
 classes: [2,2,2] # Number of classes for each task
 num_tasks: 3 # Number of tasks
@@ -9,14 +9,14 @@ tasks: ['cancer','candidiasis','cluecell'] #Task names, consistent with the csv 
 
 batch_size: 16
 img_batch: 800 # Number of patches per slide
-epochs: 30
+epochs: 3
 
-where: 'where to save the ckpt and log'
+where: 'UniCAS_res' # Where to save the ckpt and log
 lr: 0.00005
-logdir: 'where to save the false predictions for cancer_grade > 1'
+logdir: 'train2.log' # Where to save the false predictions for cancer_grade > 1
 encoder: 'UniCAS' # Encoders 
 embed_dim: 1024 # Embedding dim for the encoder
-weights: '' # Pretrained weights for the aggregator
+weights: '' # Wights for the aggregator
 depth: 8 # Depth of the aggregator
 
 capacity_factors: [256,256,256,256,256,256,256,256] # Slot for Mult-task aggregator
