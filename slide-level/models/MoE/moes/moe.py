@@ -163,13 +163,7 @@ class MOE_MLP(nn.Module):
         self.gate = nn.ModuleList(self.gate)
         self.num_experts_per_tok = top_k
         self.gate_softmax = True
-        # print("MOE_MLP Softmax for Gate:{}".format(str(self.gate_softmax)))
 
-
-        # self.gate = NoisyGate_VMoE(d_model, num_expert, world_size, top_k[2],
-        #             return_decoupled_activation=gate_return_decoupled_activation,
-        #             noise_std=vmoe_noisy_std,regu_experts_fromtask = False,
-        #             num_experts_pertask=num_experts_pertask, num_tasks=-1,regu_sem=regu_sem,sem_force = sem_force, regu_subimage=regu_subimage)
 
     def forward(self, x,taskid=0):
         orig_shape = x.shape
@@ -179,23 +173,17 @@ class MOE_MLP(nn.Module):
             scores = self.gate[taskid](x).softmax(dim=-1)
         else:
             scores = self.gate[taskid](x)
-            # print('dsad',type(scores))
-        # print('dadsa',scores.size(),self.num_experts_per_tok)
         
         expert_weights, expert_indices = torch.topk(
             scores, self.num_experts_per_tok, dim=-1)
-        # print(expert_weights.squeeze(),expert_weights.size())
-        
         expert_weights = expert_weights.softmax(dim=-1)
         flat_expert_indices = expert_indices.view(-1)
         x = x.repeat_interleave(self.num_experts_per_tok, dim=0)
         y = torch.empty_like(x)
         for i, expert in enumerate(self.experts):
             y[flat_expert_indices == i] = expert(x[flat_expert_indices == i])
-            # if expert(x[flat_expert_indices == i]).sum()>0:
-            #     print(expert(x[flat_expert_indices == i]).max(),'poo')
         y = (y.view(*expert_weights.shape, -1) * expert_weights.unsqueeze(-1)).sum(dim=1)
-        # print('dasdsa',y.size())
+
         return y.view(*orig_shape)
     
 class Mlp(nn.Module):

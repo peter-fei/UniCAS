@@ -64,15 +64,9 @@ class TransMIL(nn.Module):
             self.text_projs = nn.ModuleList(self.text_projs)
     
             self.heads = nn.ModuleList([nn.Linear(512, 512) for i in range(num_tasks)])
-        print(f'clip_head: {clip_head} -------------------------------')
-        self.clip_select = nn.Identity()
-        self.select = clip_select
-        
+        print(f'clip_head: {clip_head} -------------------------------')        
 
     def forward(self,x,text_features=None,labels=None):
-        if self.select:
-            x,loss = self.clip_select(x,labels)
-            print(x.size(),loss,'oopsads')
 
         h = x.float()
         h = self._fc1(h)
@@ -99,19 +93,6 @@ class TransMIL(nn.Module):
         results_dict = {}
         logits = self._fc2(h[:,0])
         results_dict[0] = logits
-        return results_dict
-
-        for i in range(self.num_tasks):
-            logits = self.heads[i](h[:,i])
-            results_dict[i] = logits
-            results_dict[f'feature_{i}'] = h[:,i]
-            if text_features is not None:
-                text_feature = self.text_projs[i](text_features[i])
-                image_feature = logits / logits.norm(dim=-1, keepdim=True)
-                text_feature = text_feature / text_feature.norm(dim=-1, keepdim=True)
-                results_dict[i] = image_feature
-                results_dict[f'text_{i}'] = text_feature
-                
         return results_dict
 
 if __name__ == "__main__":

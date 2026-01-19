@@ -7,9 +7,8 @@ from einops.layers.torch import Rearrange
 from PIL import Image
 from torch.utils.data import Dataset
 
-FEATURE_FOLDER_ROOT = "./a"
-# SLIDE_FOLDER_ROOT = "./Slide_Path"
-SLIDE_FOLDER_ROOT = "E:/"
+FEATURE_FOLDER_ROOT = "./"
+SLIDE_FOLDER_ROOT = "./Slide_Path"
 
 
 class MultiDataSet(Dataset):

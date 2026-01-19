@@ -34,8 +34,8 @@ def initialize_metrics(args, local_rank, include_extra=False):
         pre_metrics = [Precision(task='multiclass' if i>2 else 'binary', num_classes=i, average='macro').cuda(local_rank) for i in args.classes]
         f1_metrics = [F1Score(task='multiclass' if i>2 else 'binary', num_classes=i, average='macro').cuda(local_rank) for i in args.classes]
         acc_metrics = [Accuracy(task='multiclass' if i>2 else 'binary', num_classes=i, average='macro').cuda(local_rank) for i in args.classes]
-        confusion_matrixs = [ConfusionMatrix(task=('multiclass' if i>2 else 'binary'), num_classes=i).cuda(local_rank) for i in args.classes]
-        return sens_metrics, spec_metrics, auc_metrics, pre_metrics, f1_metrics, acc_metrics, confusion_matrixs
+        confusion_matrices = [ConfusionMatrix(task=('multiclass' if i>2 else 'binary'), num_classes=i).cuda(local_rank) for i in args.classes]
+        return sens_metrics, spec_metrics, auc_metrics, pre_metrics, f1_metrics, acc_metrics, confusion_matrices
     
     return sens_metrics, spec_metrics, auc_metrics
 
@@ -172,7 +172,7 @@ def evaluate_all(model, data_loader, local_rank, epoch, args, name='test', cont=
     task_epoch = [1e-8] * num_tasks
     task_num = [1e-8] * num_tasks
 
-    sens_metrics, spec_metrics, auc_metrics, pre_metrics, f1_metrics, acc_metrics, confusion_matrixs = \
+    sens_metrics, spec_metrics, auc_metrics, pre_metrics, f1_metrics, acc_metrics, confusion_matrices = \
         initialize_metrics(args, local_rank, include_extra=True)
     
     res_preds = [[] for _ in range(num_tasks)]
@@ -227,7 +227,7 @@ def evaluate_all(model, data_loader, local_rank, epoch, args, name='test', cont=
             pre_metrics[i].update(pred_classes, label)
             f1_metrics[i].update(pred_classes, label)
             acc_metrics[i].update(pred_classes, label)
-            confusion_matrixs[i].update(pred_classes, label)
+            confusion_matrices[i].update(pred_classes, label)
             
             task_epoch[i] += 1
             task_num[i] += label.size(0)
@@ -240,7 +240,7 @@ def evaluate_all(model, data_loader, local_rank, epoch, args, name='test', cont=
         data_loader.desc = s_desc
 
     acc_res, auc_res, f1_res, sens_res, spec_res, pre_res = compute_metric_results([acc_metrics, auc_metrics, f1_metrics, sens_metrics, spec_metrics, pre_metrics])
-    confusion = [confusion_matrixs[i].compute() for i in range(len(confusion_matrixs))]
+    confusion = [confusion_matrices[i].compute() for i in range(len(confusion_matrices))]
     if cont:
         print(f'total_errors_label: {errors_nums[0]} {len(errors_lists[0])}')
 
@@ -277,7 +277,7 @@ def evaluate(model, data_loader, local_rank, epoch, args, name='valid', cont=Fal
     task_epoch = [1e-8] * num_tasks
     task_num = [1e-8] * num_tasks
 
-    sens_metrics, spec_metrics, auc_metrics, pre_metrics, f1_metrics, acc_metrics, confusion_matrixs = \
+    sens_metrics, spec_metrics, auc_metrics, pre_metrics, f1_metrics, acc_metrics, confusion_matrices = \
         initialize_metrics(args, local_rank, include_extra=True)
     
     res_preds = [[] for _ in range(num_tasks)]
@@ -340,7 +340,7 @@ def evaluate(model, data_loader, local_rank, epoch, args, name='valid', cont=Fal
             pre_metrics[i].update(pred_classes, label)
             f1_metrics[i].update(pred_classes, label)
             acc_metrics[i].update(pred_classes, label)
-            confusion_matrixs[i].update(pred_classes, label)
+            confusion_matrices[i].update(pred_classes, label)
             task_epoch[i] += 1
             task_num[i] += task_id_mask[i].sum().item()
 
@@ -352,7 +352,7 @@ def evaluate(model, data_loader, local_rank, epoch, args, name='valid', cont=Fal
         data_loader.desc = s_desc
 
     acc_res, auc_res, f1_res, sens_res, spec_res, pre_res = compute_metric_results([acc_metrics, auc_metrics, f1_metrics, sens_metrics, spec_metrics, pre_metrics])
-    confusion = [confusion_matrixs[i].compute() for i in range(len(confusion_matrixs))]
+    confusion = [confusion_matrices[i].compute() for i in range(len(confusion_matrices))]
     pre_res = [pre.compute().item() for pre in pre_metrics]
     f1_res = [f1.compute().item() for f1 in f1_metrics]
     acc_res = [acc.compute().item() for acc in acc_metrics]

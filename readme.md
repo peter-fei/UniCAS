@@ -1,37 +1,36 @@
-# UniCAS
+# UniCAS: A Foundation Model for Cervical Cytology Screening
 
-Cervical abnormality screening is pivotal for prevention and treatment. However, the substantial size of whole slide images (WSIs) makes examination labor-intensive and time-consuming. Current deep learning-based approaches struggle with the morphological diversity of cervical cytology and require specialized models for distinct diagnostic tasks, leading to fragmented workflows. Here, we present UniCAS, a cytology foundation model pre-trained on 48,532 cervical WSIs encompassing diverse patient demographics and pathological conditions. UniCAS enables various clinical analysis tasks, achieving state-of-the-art performance in slide-level diagnosis, region-level analysis, and pixel-level image enhancement. In particular, by integrating a multi-task aggregator for slide-level diagnosis, UniCAS achieves AUCs of 92.60%, 92.58%, and 98.39% for cancer screening, candidiasis testing, and clue cell diagnosis, respectively, while reducing diagnostic time by 70% compared to conventional approaches. This work establishes a paradigm for efficient multi-scale analysis in automated cervical cytology, bridging the gap between computational pathology and clinical diagnostic workflows.
+UniCAS is a foundation model pre-trained on **48,532 cervical whole slide images (WSIs)**, designed to handle the morphological diversity of cervical cytology. It achieves state-of-the-art performance in:
 
-## Table of Contents
+- **Slide-level diagnosis** (Cancer screening, Candidiasis, Clue cells)
+- **Region-level analysis** (Detection & Segmentation)
+- **Pixel-level image enhancement**
 
-- [Requirements](#requirements)
-- [Quick usage](#quick-usage)
-- [Slide-level diagnosis](#slide-level-diagnosis)
-- [Citation &amp; License](#citation--license)
+By integrating a multi-task aggregator, UniCAS achieves AUCs of **92.60% (Cancer)**, **92.58% (Candidiasis)**, and **98.39% (Clue cells)**, reducing diagnostic time by 70%.
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.9+
 - PyTorch
-- timm (PyTorch Image Models)
+- `timm==1.0.5`
 
-Install minimal dependencies with pip:
+## Quick Usage
 
-```powershell
-pip install torch torchvision timm
-```
+### 1. Download Weights
 
-Use a CUDA-enabled PyTorch build if you want GPU acceleration.
+Download the pre-trained weights (`UniCAS.pth`) from:
 
-## Quick usage
+- [Baidu Netdisk](https://pan.baidu.com/s/154QIsDYiBjDaxhyvlc2YYQ?pwd=9z95) (Password: `9z95`)
+- [Hugging Face](https://huggingface.co/jianght/UniCAS)
 
-Example: create the ViT model with the UniCAS hyper-parameters and load pretrained weights you downloaded from [Baidu Netdisk](https://pan.baidu.com/s/154QIsDYiBjDaxhyvlc2YYQ?pwd=9z95) or [Hugging Face](https://huggingface.co/jianght/UniCAS).
+### 2. Load Model
 
 ```python
 import functools
 import torch
 import timm
 
+# Define UniCAS parameters
 params = {
     'patch_size': 16,
     'embed_dim': 1024,
@@ -47,31 +46,43 @@ params = {
     'in_chans': 3,
 }
 
-# build model
+# Build model
 model = timm.models.VisionTransformer(**params)
 
-# download the checkpoint from Hugging Face, place it locally as 'UniCAS.pth'
-# then load the state dict (strict=False to allow slight architecture differences)
+# Load checkpoint
+# Ensure 'UniCAS.pth' is in your current directory
 state = torch.load('UniCAS.pth', map_location='cpu')
 print(model.load_state_dict(state, strict=False))
 
-# example forward pass
+# Inference example
 model.eval()
+if torch.cuda.is_available():
+    model = model.cuda()
+
 with torch.no_grad():
+    # Input: [Batch, Channels, Height, Width]
     x = torch.randn(1, 3, 224, 224)
+    if torch.cuda.is_available():
+        x = x.cuda()
     out = model(x)
-    print('Output shape:', out.shape)
+    print('Output feature shape:', out.shape) # Expected: [1, 1024]
 ```
 
-## Slide-level diagnosis
+## Task-Specific Guides
 
-The code for slide-level diagnosis (including the multi-task aggregator) is provided in this repository. Quick pointers:
+### Slide-level Diagnosis
 
-- `models/multitask_agg.py` — implementation of the multi-task aggregator used for slide-level aggregation and multi-task prediction.
-- `slide-level/train_distribute.py` — distributed training entrypoint for slide-level tasks.
+Located in the `slide-level/` directory.
 
-More code about region-level classification, detection, and segmentation is coming soon.
+- **Aggregator**: [`models/multitask_agg.py`](slide-level/models/multitask_agg.py)
+- **Training**: [`slide-level/train_distribute.py`](slide-level/train_distribute.py)
+- **Detailed Guide**: See [slide-level/README.md](slide-level/README.md) for data preparation and training instructions.
+
+### Region-level Analysis
+
+For detection and segmentation tasks, we utilize [Detectron2](https://github.com/facebookresearch/detectron2).
+*(Note: Refer to specific sub-directories or future updates for integration code.)*
 
 ## Citation & License
 
-If you use UniCAS in your work, please credit the authors and check the model repository on Hugging Face for citation and license information.
+If you use UniCAS in your research, please credit the authors.

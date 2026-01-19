@@ -19,7 +19,7 @@ parser.add_argument('--weights', type=str, default='',
 parser.add_argument('--freeze-layers', type=bool, default=False)
 parser.add_argument('--device', default='cuda:0', help='device id (i.e. 0 or 0,1 or cpu)')
 parser.add_argument('--where', default="./ckpts", help='where to save the model')
-parser.add_argument('--base_path', default='/public_bme/data/jianght/datas/Pathology/class2', help='base path for the csv files')
+parser.add_argument('--base_path', default='./datas', help='base path for the csv files')
 parser.add_argument('--train-csv', default='train.csv')
 parser.add_argument('--valid-csv', '--test_neibu_csv', default='valid.csv')
 parser.add_argument('--test-csv','--test_waibu_csv', default='test.csv')

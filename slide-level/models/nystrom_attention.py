@@ -135,7 +135,6 @@ class NystromAttention(nn.Module):
         att = (attn1 @ attn2_inv)
         mask = torch.ones_like(att, requires_grad=False)
         if self.num_tasks > 1:
-            #print(self.multi_tasks,'ddddddddddddddddddddddd')
             for i in range(self.num_tasks-1):
                 for j in range(i+1,self.num_tasks):
                     mask[:, :, i, j] = mask[:, :, j, i] = 0

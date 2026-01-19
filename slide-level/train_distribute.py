@@ -1,4 +1,3 @@
-import warnings
 import os
 import math
 import logging
@@ -19,17 +18,17 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-def seed_reproducer(seed=2022):
+def seed_reproducer(seed=9):
     """Reproducer for pytorch experiment.
 
     Parameters
     ----------
-    seed: int, optional (default = 2019)
+    seed: int, optional (default = 9)
         Radnom seed.
 
     Example
     -------
-    seed_reproducer(seed=2019).
+    seed_reproducer(seed=9).
     """
     random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)

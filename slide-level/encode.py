@@ -81,24 +81,24 @@ def main(args):
         'in_chans': 3,
         }
         model = timm.models.VisionTransformer(**params)
-        state = torch.load('../UniCAS.pth')
+        state = torch.load('checkpoints/UniCAS/UniCAS.pth')
         print(model.load_state_dict(state, strict=False),' UniCAS')
 
-    if args.encoder == 'conch':
+    if args.encoder == 'conch': # 
         from models.open_clip_custom import create_model_from_pretrained
-        model,process = create_model_from_pretrained('conch_ViT-B-16',checkpoint_path='/public/home/jianght2023/checkpoints/CONCH/pytorch_model.bin')
-        print(model.load_state_dict(torch.load('/public/home/jianght2023/checkpoints/CONCH/pytorch_model.bin'),strict=False),'CONCH')
+        model,process = create_model_from_pretrained('conch_ViT-B-16',checkpoint_path='checkpoints/CONCH/pytorch_model.bin')
+        print(model.load_state_dict(torch.load('checkpoints/CONCH/pytorch_model.bin'),strict=False),'CONCH')
         model = model.visual
     elif args.encoder == 'gigapath':
-        cfg = load_cfg_from_json("/public/home/jianght2023/checkpoints/prov-gigapath/config.json")
-        model = timm.create_model("vit_giant_patch14_dinov2",**cfg['model_args'],pretrained_cfg=cfg['pretrained_cfg'], pretrained=False,checkpoint_path="/public/home/jianght2023/checkpoints/prov-gigapath/pytorch_model.bin")
-        print(model.load_state_dict(torch.load('/public/home/jianght2023/checkpoints/prov-gigapath/pytorch_model.bin'),strict=False),'Gigapath')
+        cfg = load_cfg_from_json("/checkpoints/prov-gigapath/config.json")
+        model = timm.create_model("vit_giant_patch14_dinov2",**cfg['model_args'],pretrained_cfg=cfg['pretrained_cfg'], pretrained=False,checkpoint_path="checkpoints/prov-gigapath/pytorch_model.bin")
+        print(model.load_state_dict(torch.load('checkpoints/prov-gigapath/pytorch_model.bin'),strict=False),'Gigapath')
     elif args.encoder == 'hibou':
         from models.hibou import build_model
-        model = build_model(weights_path="/public/home/jianght2023/checkpoints/HIBOU/hibou-b.pth")
+        model = build_model(weights_path="checkpoints/HIBOU/hibou-b.pth")
     elif args.encoder == 'uni':
         model = timm.create_model("vit_large_patch16_224", img_size=224, patch_size=16, init_values=1e-5, num_classes=0, dynamic_img_size=True)
-        print(model.load_state_dict(torch.load('/public/home/jianght2023/checkpoints/UNI/pytorch_model.bin')),'UNI')
+        print(model.load_state_dict(torch.load('checkpoints/UNI/pytorch_model.bin')),'UNI')
     elif args.encoder == 'hoptimus':
         params = {
             'patch_size': 14, 
@@ -119,7 +119,7 @@ def main(args):
         }
 
         model = timm.models.VisionTransformer(**params)
-        print(model.load_state_dict(torch.load('/public/home/jianght2023/checkpoints/Hoptimus/checkpoint.pth', map_location="cpu")),'Hoptimus')
+        print(model.load_state_dict(torch.load('checkpoints/Hoptimus/checkpoint.pth', map_location="cpu")),'Hoptimus')
         print(args.encoder)
     
     model = model.to(device)

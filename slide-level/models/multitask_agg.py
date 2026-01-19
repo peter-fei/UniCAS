@@ -276,12 +276,12 @@ class MultiTask_Agg(nn.Module):
 
         self.classes = classes
         embed_dim_in = embed_dim
-        self.embed_dim = embed_dim = 768  # embed_dim for consistency with other models
+        self.embed_dim = 768  # embed_dim for consistency with other models
         self.num_tokens = 2 if distilled else 1
         norm_layer = norm_layer or partial(nn.LayerNorm, eps=1e-6)
         act_layer = act_layer or nn.GELU
 
-        self.dist_token = nn.Parameter(torch.zeros(1, 1, embed_dim)) if distilled else None
+        self.dist_token = nn.Parameter(torch.zeros(1, 1, self.embed_dim)) if distilled else None
         self.pos_drop = nn.Dropout(p=drop_ratio)
 
         self.depth = depth
@@ -323,19 +323,19 @@ class MultiTask_Agg(nn.Module):
         self.blocks = nn.Sequential(*blocks)
 
         self.layer1 = nn.Sequential(
-            nn.Linear(embed_dim_in, embed_dim),
-            nn.LayerNorm(embed_dim),
+            nn.Linear(embed_dim_in, self.embed_dim),
+            nn.LayerNorm(self.embed_dim),
             nn.GELU(),
         )
 
-        self.norm = norm_layer(embed_dim)
+        self.norm = norm_layer(self.embed_dim)
 
         # Representation layer
         if representation_size and not distilled:
             self.has_logits = True
             self.embed_dim = representation_size
             self.pre_logits = nn.Sequential(OrderedDict([
-                ("fc", nn.Linear(embed_dim, representation_size)),
+                ("fc", nn.Linear(self.embed_dim, representation_size)),
                 ("act", nn.Tanh())
             ]))
         else:
@@ -346,11 +346,11 @@ class MultiTask_Agg(nn.Module):
         if distilled:
             self.head_dist = nn.Linear(self.embed_dim, self.classes[1]) if classes > 0 else nn.Identity()
 
-        self.task_tokens = nn.Parameter(torch.zeros(1, self.num_tasks, embed_dim))
+        self.task_tokens = nn.Parameter(torch.zeros(1, self.num_tasks, self.embed_dim))
 
         self.heads = nn.ModuleList([nn.Linear(self.embed_dim, classes[i]) for i in range(self.num_tasks)])
 
-        self.pos_layer = PPEG(dim=embed_dim)
+        self.pos_layer = PPEG(dim=self.embed_dim)
 
         # Weight init
         if self.dist_token is not None:

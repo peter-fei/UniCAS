@@ -1,70 +1,96 @@
-## Multi-task Aggregator for slide-level diagnosis
+# Multi-task Aggregator for Slide-Level Diagnosis
 
-A lightweight README for training and evaluating the multi-task aggregator on whole-slide level tasks.
+This repository contains the implementation of a Multi-task Aggregator for whole-slide image (WSI) diagnosis. It supports multi-task learning scenarios (e.g., cancer screening, candidiasis testing, and clue cell diagnosis).
 
-## Dataset / CSV format
+## Prerequisites & Directory Structure
 
-- Organize per-slide labels in a CSV file (example location: `csvs/test.csv`).
-- The training CSV must include a `task_id` column that indicates which task the row belongs to. `task_id` indexes into the `tasks` list in the config.
+To ensure the code runs correctly, your data directory must follow a specific structure due to the loader implementation.
 
-Minimal example (CSV):
+1. **Feature Directory**: You must have a directory in the project root matching the pattern `Pathology_{encoder}_p*` (e.g., `Pathology_unicas_patch`).
+2. **Slide Data**: Inside this directory, each slide's features must be stored in a `torch/images.pt` file.
 
-```csv
-name,code,[task_name],task_id
-path1/slide1,slide1,1(label),1
-path1/slde2,slide2,1,0
-path2/slide3,slide3,0,1
+**Recommended Structure:**
+
+```text
+UniCAS/
+├── Pathology_unicas_patch/       # Feature root directory
+│   ├── slide1/                   # Slide name (must match 'name' in CSV)
+│   │   └── torch/
+│   │       └── images.pt         # Feature tensor
+│   ├── slide2/
+│   │   └── torch/
+│   │       └── images.pt
+│   └── ...
+├── csvs/                         # CSV files location
+│   ├── train.csv
+│   └── test.csv
+├── configs/
+│   └── multitask_unicas.yaml
+└── ...
 ```
 
-Explanation:
+## Dataset Preparation
 
-- name: unique path to slide/feature file depending on your loader.
-- code: code for each slide (you can also replace the code as name if your code is the slide path).
-- `task_id`: integer index of the task. In our settings, `task_id=0` -> `cancer`, `1` -> `candidiasis`, `2` -> `cluecell`.
-- [task_name]: target label for this slide and this task (use the label encoding your dataset expects).
+### CSV Format
+
+Organize your slide labels in CSV files (e.g., `csvs/train.csv`, `csvs/test.csv`).
+
+**Requirements:**
+
+- **Training CSV**: Must include a `task_id` column indicating the active task for that row.
+- **Columns**: `name`, `code`, `task_id`, and columns for each specific task label.
+
+**Minimal Example:**
+
+```csv
+name, code, cancer, candidiasis, cluecell, task_id
+slide1, slide1, 1, 0, 1, 0
+slide2, slide2, 1, 0, 0, 1
+slide3, slide3, 0, 1, 0, 2
+```
+
+**Column Explanation:**
+
+- `name`: Unique identifier for the slide. This **must match** the folder name in your feature directory.
+- `code`: Alternative identifier (can be the same as name).
+- `[task_name]` (e.g., `cancer`, `candidiasis`): Ground truth labels. You must have a column for every task defined in your config.
+- `task_id`: Integer index for the active task in the current row.
+  - Example mapping: `0` -> `cancer`, `1` -> `candidiasis`, `2` -> `cluecell`.
 
 ## Configuration
 
-The default config is `configs/multitask_unicas.yaml`. Important keys:
+The default configuration file is `configs/multitask_unicas.yaml`.
 
-- `base_path`: base path for CSV files (e.g. `./csvs`).
-- `train_csv`, `valid_csv`, `test_csv`: filenames under `base_path`.
-- `tasks`: list of task names. Order must match how you use `task_id` in the CSV.
-- `num_tasks`: number of tasks.
-- `img_batch`: number of patches sampled per slide.
-- encoder: encoder to train the aggregator.
-- `embed_dim`, `depth`, `aggregator`: model architecture hyperparameters.
-- `loss_fns`, `loss-weights`: loss choices and weighting.
+**Key Parameters:**
 
-Edit the YAML to match your dataset and training preferences.
+- `base_path`: Directory containing CSV files (default: `./csvs`).
+- `train_csv` / `valid_csv` / `test_csv`: Filenames relative to `base_path`.
+- `tasks`: List of task names (e.g., `['cancer', 'candidiasis', 'cluecell']`). **Order matters** as it corresponds to `task_id`.
+- `num_tasks`: Total number of tasks.
+- `img_batch`: Number of patches to sample per slide during training.
+- `encoder`: Name of the encoder (used to locate the `Pathology_{encoder}_p*` directory).
+- `embed_dim`: Embedding dimension (Note: Ensure this matches your encoder output).
 
-## Encode
+## Usage. Encode Features (Optional)
 
-```
+If you need to extract features from slides:
+
+```bash
 python encode.py --encoder UniCAS --csv csvs/test.csv
 ```
 
-## Train
+### 2. Training
 
-Use PyTorch's `torchrun` to launch training. Example single-node single-process run:
+Use `torchrun` for distributed training.
 
 ```powershell
 torchrun --nproc_per_node=1 --master_port=2252 train_distribute.py --config configs/multitask_unicas.yaml
 ```
 
-For multi-GPU training, set `--nproc_per_node` to the number of processes (GPUs) you want to use, and adjust `--master_port` if needed.
+### 3. Evaluation
 
-## Evaluate
-
-To run evaluation / inference only, add the `--eval-only` flag:
+To run inference/evaluation only (skips training):
 
 ```powershell
 torchrun --nproc_per_node=1 --master_port=2252 train_distribute.py --config configs/multitask_unicas.yaml --eval-only
 ```
-
-## Notes & tips
-
-- `task_id` should be consistent between CSV and `configs/*.yaml`.
-- If you have pretrained aggregator weights, set `weights` in the YAML.
-- To freeze the  task, set its learning rate in `lr_head` to a very small value (<1e-8).
-- `cont` in the config controls whether to log false predictions for certain cancer grades (project-ASC-US+ behavior).
