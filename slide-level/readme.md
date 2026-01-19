@@ -65,7 +65,7 @@ The default configuration file is `configs/multitask_unicas.yaml`.
 
 - `base_path`: Directory containing CSV files (default: `./csvs`).
 - `train_csv` / `valid_csv` / `test_csv`: Filenames relative to `base_path`.
-- `tasks`: List of task names (e.g., `['cancer', 'candidiasis', 'cluecell']`). **Order matters** as it corresponds to `task_id`.
+- `tasks`: List of task names (e.g., `['cancer', 'candidiasis', 'cluecell']`). Order matters as it corresponds to `task_id`.
 - `num_tasks`: Total number of tasks.
 - `img_batch`: Number of patches to sample per slide during training.
 - `encoder`: Name of the encoder (used to locate the `Pathology_{encoder}_p*` directory).
