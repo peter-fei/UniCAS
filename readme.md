@@ -74,7 +74,7 @@ with torch.no_grad():
 
 Located in the `slide-level/` directory.
 
-- **Aggregator**: [`models/multitask_agg.py`](slide-level/models/multitask_agg.py)
+- **Aggregator**: [`slide-level/models/multitask_agg.py`](slide-level/models/multitask_agg.py)
 - **Training**: [`slide-level/train_distribute.py`](slide-level/train_distribute.py)
 - **Detailed Guide**: See [slide-level/README.md](slide-level/README.md) for data preparation and training instructions.
 
