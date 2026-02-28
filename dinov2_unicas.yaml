@@ -1,0 +1,35 @@
+
+dino:
+  head_n_prototypes: 131072
+  head_bottleneck_dim: 384
+ibot:
+  separate_head: true
+  head_n_prototypes: 131072
+train:
+  batch_size_per_gpu: 96
+  dataset_path: Pathology
+  centering: sinkhorn_knopp
+  num_workers: 16
+student:
+  arch: vit_large
+  patch_size: 16
+  drop_path_rate: 0.4
+  ffn_layer: swiglufused
+  block_chunks: 4
+teacher:
+  momentum_teacher: 0.994
+optim:
+  epochs: 1000
+  weight_decay_end: 0.2
+  base_lr: 3e-04  # learning rate for a batch size of 1024
+  warmup_epochs: 80
+  layerwise_decay: 1.0
+
+crops:
+  global_crops_scale:
+  - 0.5
+  - 1.0
+  local_crops_number: 4
+  local_crops_scale:
+  - 0.2
+  - 0.32
